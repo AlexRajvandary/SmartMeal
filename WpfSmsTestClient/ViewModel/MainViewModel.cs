@@ -2,7 +2,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
-using System.Runtime.InteropServices;
 using System.Windows.Input;
 using WpfSmsTestClient.Commands;
 using WpfSmsTestClient.Model;
@@ -13,22 +12,23 @@ namespace WpfSmsTestClient.ViewModel
     public class MainViewModel : ViewModelBase
     {
         private readonly IConfiguration _configuration;
+        private readonly IEnvironmentNotifier _envirnomentNotifier;
         private readonly ILogger<MainViewModel> _logger;
         private readonly IMessageBoxService _messageBoxService;
-        private readonly IEnvironmentNotifier _envirnomentNotifier;
+       
 
         private ObservableCollection<EnvironmentVariableModel> _environmentVariables;
 
-        public MainViewModel(ILogger<MainViewModel> logger,
-                             IConfiguration configuration,
-                             IMessageBoxService messageBoxService,
-                             IEnvironmentNotifier envirnomentNotifier)
+        public MainViewModel(IConfiguration configuration,
+                             IEnvironmentNotifier envirnomentNotifier,
+                             ILogger<MainViewModel> logger,
+                             IMessageBoxService messageBoxService)
         {
             _configuration = configuration;
+            _envirnomentNotifier = envirnomentNotifier;
             _logger = logger;
             _messageBoxService = messageBoxService;
-            _envirnomentNotifier = envirnomentNotifier;
-
+            
             EnvironmentVariables = new ObservableCollection<EnvironmentVariableModel>();
 
             SaveCommand = new RelayCommand(SaveEnvironmentVariables);
@@ -42,6 +42,26 @@ namespace WpfSmsTestClient.ViewModel
         }
 
         public ICommand SaveCommand { get; }
+
+        public void SaveEnvironmentVariables()
+        {
+            foreach (var variable in EnvironmentVariables)
+            {
+                try
+                {
+                    _logger.LogInformation($"Переменная {variable.Name} изменена. Новое значение: {variable.Value}");
+                    Registry.SetValue(@"HKEY_CURRENT_USER\Environment", variable.Name, variable.Value);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Ошибка при записи переменной {variable.Name}: {ex.Message}");
+                }
+            }
+
+            _envirnomentNotifier.NotifyEnvironmentChanged();
+
+            _messageBoxService.ShowNotification("Данные сохранены!");
+        }
 
         private void LoadEnvironmentVariables()
         {
@@ -83,24 +103,5 @@ namespace WpfSmsTestClient.ViewModel
             }
         }
 
-        public void SaveEnvironmentVariables()
-        {
-            foreach (var variable in EnvironmentVariables)
-            {
-                try
-                {
-                    _logger.LogInformation($"Переменная {variable.Name} изменена. Новое значение: {variable.Value}");
-                    Registry.SetValue(@"HKEY_CURRENT_USER\Environment", variable.Name, variable.Value);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError($"Ошибка при записи переменной {variable.Name}: {ex.Message}");
-                }
-            }
-
-            _envirnomentNotifier.NotifyEnvironmentChanged();
-
-            _messageBoxService.ShowNotification("Данные сохранены!");
-        }
     }
 }
