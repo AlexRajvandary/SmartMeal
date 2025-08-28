@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using Serilog;
 using SmartMealApiClient.Services;
+using System.Reflection;
 
 namespace SmsConsoleApp
 {
@@ -20,9 +21,25 @@ namespace SmsConsoleApp
 
             bool useGrpc = bool.TryParse(config["UseGrpc"], out var result) && result;
 
+            string exePath = Assembly.GetExecutingAssembly().Location;
+            string exeDir = Path.GetDirectoryName(exePath)!;
+
+            string solutionDir = exeDir;
+            for (int i = 0; i < 3; i++)
+            {
+                solutionDir = Path.GetDirectoryName(solutionDir)!;
+            }
+
+            string logFolder = Path.Combine(solutionDir, "logs");
+
+            if (!Directory.Exists(logFolder))
+            {
+                Directory.CreateDirectory(logFolder);
+            }
+
             Log.Logger = new LoggerConfiguration()
-             .WriteTo.File($"logs/test-sms-console-app-{DateTime.Now:yyyyMMdd}.log", rollingInterval: RollingInterval.Day)
-             .CreateLogger();
+                .WriteTo.File(Path.Combine(logFolder, $"test-sms-console-app-{DateTime.Now:yyyyMMdd}.log"), rollingInterval: RollingInterval.Day)
+                .CreateLogger();
 
             var loggerFactory = LoggerFactory.Create(builder =>
             {
@@ -50,6 +67,8 @@ namespace SmsConsoleApp
             var dbInitializer = new DatabaseInitializer(connectionString);
             dbInitializer.InitializeDatabase();
 
+            //Не совсем понял как быть: в первой части первого задания сказано определить классы блюда и заказа, а во второй части дан .proto-файл
+            //Решил для http создать свои классы, а для rpc сгенерировать аналогичные из файла
             if (!useGrpc)
             {
                 var apiClient = new HttpApiClient(apiUrl, "username", "password");

@@ -102,6 +102,5 @@ namespace WpfSmsTestClient.ViewModel
                 }
             }
         }
-
     }
 }
